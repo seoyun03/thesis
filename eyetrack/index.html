@@ -1,27 +1,34 @@
 <!doctype html>
 <html lang="ko">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WebGazer Quick Test</title>
-<style>
-  html,body{height:100%;margin:0;background:#111;color:#fff;font:14px/1.4 system-ui}
-  .tip{position:fixed;left:12px;top:12px;background:#222a;padding:10px 12px;border-radius:8px}
-</style>
-<div class="tip">카메라 허용 후, 화면 가운데에 <b>초록 점</b>이 보이면 정상입니다.</div>
-<script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-<script>
-(async () => {
-  try {
-    await navigator.mediaDevices.getUserMedia({video:true});
-  } catch(e) {
-    console.warn(e);
-  }
-  webgazer.setRegression('ridge')
-    .showVideoPreview(true)        // 왼쪽 상단 비디오
-    .showFaceOverlay(true)         // 얼굴 박스
-    .showFaceFeedbackBox(true)     // 피드백 박스
-    .showPredictionPoints(true)    // ★ 초록 예측 점
-    .begin();
-})();
-</script>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gaze Heatmap</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="ui">
+    <div class="row title">Gaze Heatmap</div>
+    <div class="row">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="calibrateBtn">Calibrate</button>
+    </div>
+    <div class="row">
+      <label class="chk"><input id="showCam" type="checkbox" /> Show camera feed</label>
+      <label class="chk"><input id="mouseToggle" type="checkbox" /> Enable mouse fallback</label>
+    </div>
+    <div class="row">
+      Status: <span id="status" class="badge">idle</span>
+    </div>
+    <div id="hint" class="hint">HTTPS(또는 http://localhost)에서 열고 카메라 권한을 허용하세요.</div>
+  </div>
+
+  <canvas id="heat"></canvas>
+
+  <!-- 반드시 webgazer를 먼저 로드 -->
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <!-- 내 스크립트 -->
+  <script src="script.js"></script>
+</body>
 </html>
