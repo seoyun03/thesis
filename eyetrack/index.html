@@ -1,18 +1,27 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gaze Heatmap (Eye Tracking)</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <canvas id="heat"></canvas>
-  <div class="hint">Allow camera access. If blocked, it falls back to mouse tracking.</div>
-
-  <!-- WebGazer (브라우저 내 시선 추적 라이브러리) -->
-  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-  <!-- 메인 스크립트 -->
-  <script src="script.js"></script>
-</body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGazer Quick Test</title>
+<style>
+  html,body{height:100%;margin:0;background:#111;color:#fff;font:14px/1.4 system-ui}
+  .tip{position:fixed;left:12px;top:12px;background:#222a;padding:10px 12px;border-radius:8px}
+</style>
+<div class="tip">카메라 허용 후, 화면 가운데에 <b>초록 점</b>이 보이면 정상입니다.</div>
+<script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+<script>
+(async () => {
+  try {
+    await navigator.mediaDevices.getUserMedia({video:true});
+  } catch(e) {
+    console.warn(e);
+  }
+  webgazer.setRegression('ridge')
+    .showVideoPreview(true)        // 왼쪽 상단 비디오
+    .showFaceOverlay(true)         // 얼굴 박스
+    .showFaceFeedbackBox(true)     // 피드백 박스
+    .showPredictionPoints(true)    // ★ 초록 예측 점
+    .begin();
+})();
+</script>
 </html>
