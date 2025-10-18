@@ -1,0 +1,16 @@
+/* 전체 화면 캔버스 */
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #000; /* 초기 배경(어두울수록 색이 선명) */
+  overflow: hidden;
+}
+
+/* 캔버스는 화면을 꽉 채움 */
+#heat {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  cursor: none;         /* 필요하면 보이게 바꿔도 됨 */
+  image-rendering: auto; /* 확대 시 부드럽게 */
+}

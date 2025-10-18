@@ -1,0 +1,36 @@
+/* 전체 화면 캔버스 레이아웃 */
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #000; /* 어두울수록 색 대비가 좋음 */
+  overflow: hidden;
+}
+
+#heat {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  cursor: none;          /* 필요시 auto 로 변경 */
+  image-rendering: auto; /* 확대 렌더링 부드럽게 */
+}
+
+/* WebGazer의 프리뷰/오버레이 숨기기 (원하면 보이게 수정 가능) */
+video#webgazerVideoFeed,
+canvas#webgazerFaceOverlay,
+canvas#webgazerGazeDot {
+  display: none !important;
+}
+
+/* 하단 힌트 */
+.hint {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  color: #8aa;
+  font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  opacity: 0.75;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 8px 10px;
+  border-radius: 8px;
+  user-select: none;
+}
