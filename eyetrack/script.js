@@ -1,13 +1,5 @@
-// ===== 기본 세팅 =====
-const canvas = document.getElementById('heat');
-const ctx = canvas.getContext('2d', { alpha: true });
-let W = canvas.width = innerWidth;
-let H = canvas.height = innerHeight;
-addEventListener('resize', () => {
-  W = canvas.width = innerWidth;
-  H = canvas.height = innerHeight;
-});
-
+// === 엘리먼트 ===
+const dot = document.getElementById('dot');
 const startBtn = document.getElementById('startBtn');
 const stopBtn  = document.getElementById('stopBtn');
 const calibrateBtn = document.getElementById('calibrateBtn');
@@ -15,83 +7,75 @@ const showCam  = document.getElementById('showCam');
 const statusEl = document.getElementById('status');
 const hintEl   = document.getElementById('hint');
 
-// ===== 히트맵 버퍼 =====
-const points = []; // {x,y,t,weight}
-const MAX_POINTS = 150;     // 버퍼 길이
-const DECAY = 0.985;        // 가중치 감쇠
-
-function pushPoint(x, y, weight = 1) {
-  if (x < 0 || y < 0 || x > W || y > H) return;
-  points.push({ x, y, t: performance.now(), weight });
-  if (points.length > MAX_POINTS) points.shift();
-}
-
-// ===== 렌더 루프 =====
-let rafId = null;
-function render() {
-  // 잔상 서서히 소멸
-  ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  ctx.fillRect(0, 0, W, H);
-
-  const now = performance.now();
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    const age = (now - p.t) / 1000;          // seconds
-    const life = Math.max(0, 1 - age * 0.8); // 오래될수록 사라짐
-    if (life <= 0) continue;
-
-    const size  = 18 + p.weight * 60 * life;
-    const hue   = 20 + (1 - life) * 220;     // 주황 → 청보라
-    const alpha = 0.20 * p.weight * (0.6 + 0.4 * life);
-
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
-    g.addColorStop(0.00, `hsla(${hue},90%,55%,${alpha})`);
-    g.addColorStop(0.35, `hsla(${hue},90%,45%,${alpha * 0.5})`);
-    g.addColorStop(1.00, `hsla(${hue},90%,35%,0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  rafId = requestAnimationFrame(render);
-}
-
-// ===== 상태 표시 =====
+// === 상태 표시 ===
 function setStatus(text, color = '#2a3cff') {
   statusEl.textContent = text;
   statusEl.style.color = color;
 }
 
-// ===== WebGazer 제어 (마우스 대체 없음) =====
-let gazeRunning = false;
+// === 마우스 관련 코드 없음(완전 제거) ===
+
+// === 시선 좌표 (스무딩) ===
+let haveGaze = false;
+let gx = innerWidth / 2;
+let gy = innerHeight / 2;
+let sx = gx, sy = gy;            // 화면에 그릴 스무딩 좌표
+const SMOOTH = 0.25;             // 0~1 (높을수록 빨리 따라감)
+let lastTs = 0;
+
+// === 점 위치 갱신 (DOM transform) ===
+function placeDot(x, y) {
+  dot.style.transform = `translate(${x - 8}px, ${y - 8}px)`; // 점 중심 정렬(반지름=8)
+}
+
+// === 애니메이션 루프 ===
+function loop(t) {
+  if (haveGaze) {
+    // 지터 줄이기 위한 1차 지수평활
+    sx += (gx - sx) * SMOOTH;
+    sy += (gy - sy) * SMOOTH;
+
+    // 화면 경계 내로 클램프 (viewport 기준)
+    const x = Math.max(0, Math.min(innerWidth,  sx));
+    const y = Math.max(0, Math.min(innerHeight, sy));
+    placeDot(x, y);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// === WebGazer 제어 ===
+let running = false;
 
 async function startGaze() {
   setStatus('requesting camera...');
-  // 권한 팝업을 강제로 띄워 사용자의 동의를 받음
+  // 권한 팝업 먼저 띄우기
   try { await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); } catch (e) {}
 
   setStatus('starting...');
   try {
     webgazer
       .setRegression('ridge')
-      .setGazeListener((data) => {
-        if (!data) return;          // 예측값 없으면 아무것도 안 함(마우스 대체 X)
-        pushPoint(data.x, data.y, 1.2);
+      .setGazeListener((data, ts) => {
+        if (!data) return;                 // 예측 없으면 점 고정 (마우스 대체 없음)
+        haveGaze = true;
+        gx = data.x;                       // ★ WebGazer는 viewport 기준 좌표 제공
+        gy = data.y;                       //    DOM fixed 요소에 그대로 사용 → 좌우/전체 영역 정확
+        lastTs = ts;
       })
-      .showPredictionPoints(false)  // webgazer 기본 초록점 숨김
+      .showPredictionPoints(false)         // 기본 초록 점 숨김(우리가 직접 그린다)
       .begin();
 
-    gazeRunning = true;
+    running = true;
     startBtn.disabled = true;
     stopBtn.disabled  = false;
     setStatus('gaze running');
-    hintEl.textContent = '시선을 화면 곳곳에 잠깐씩 머물러 보세요. (정확도 향상: Calibrate)';
+    hintEl.textContent = '초록 점이 눈을 따라 움직여야 합니다. 정확도 향상은 Calibrate를 사용하세요.';
   } catch (e) {
-    console.error('webgazer error', e);
-    gazeRunning = false;
+    console.error(e);
+    running = false;
     setStatus('gaze failed', '#c62828');
-    hintEl.textContent = '카메라가 거부되었거나 장치가 없습니다. 마우스 대체 기능은 제공하지 않습니다.';
+    hintEl.textContent = '카메라 접근 실패. 브라우저 권한을 확인하세요.';
   }
 }
 
@@ -99,21 +83,21 @@ function stopGaze() {
   try {
     webgazer.pause();
     webgazer.clearGazeListener();
-  } catch(e) {}
-  gazeRunning = false;
+  } catch (e) {}
+  running = false;
   startBtn.disabled = false;
   stopBtn.disabled  = true;
   setStatus('stopped', '#777');
 }
 
-// ===== 카메라 피드 표시 토글 =====
+// === 카메라 피드 표시 토글 (선택) ===
 showCam.addEventListener('change', () => {
   const feed = document.getElementById('webgazerVideoFeed');
   if (!feed) return;
   feed.style.display = showCam.checked ? 'block' : 'none';
 });
 
-// ===== 캘리브레이션 =====
+// === 캘리브레이션 ===
 function calibrate() {
   const pts = [
     [0.1,0.1],[0.5,0.1],[0.9,0.1],
@@ -121,46 +105,36 @@ function calibrate() {
     [0.1,0.9],[0.5,0.9],[0.9,0.9],
   ];
   let i = 0;
-  const dot = document.createElement('div');
-  dot.className = 'cal-dot';
-  document.body.appendChild(dot);
+  const dotCal = document.createElement('div');
+  dotCal.className = 'cal-dot';
+  document.body.appendChild(dotCal);
 
   function next() {
     if (i >= pts.length) {
-      dot.remove();
+      dotCal.remove();
       hintEl.textContent = '캘리브레이션 완료!';
       return;
     }
     const [rx, ry] = pts[i];
-    dot.style.left = `${rx * innerWidth}px`;
-    dot.style.top  = `${ry * innerHeight}px`;
+    dotCal.style.left = `${rx * innerWidth}px`;
+    dotCal.style.top  = `${ry * innerHeight}px`;
     hintEl.textContent = `Calibrate: 점을 바라보고 클릭 (${i+1}/${pts.length})`;
 
     let clicked = false;
-    const onClick = () => {
-      clicked = true;
-      removeEventListener('click', onClick);
-      i++; setTimeout(next, 200);
-    };
+    const onClick = () => { clicked = true; removeEventListener('click', onClick); i++; setTimeout(next, 200); };
     addEventListener('click', onClick);
 
-    setTimeout(() => {
-      if (!clicked) { removeEventListener('click', onClick); i++; next(); }
-    }, 1200);
+    setTimeout(() => { if (!clicked) { removeEventListener('click', onClick); i++; next(); } }, 1200);
   }
   next();
 }
 
-// ===== 버튼 이벤트 =====
+// === 이벤트 바인딩 ===
 startBtn.addEventListener('click', startGaze);
 stopBtn.addEventListener('click', stopGaze);
 calibrateBtn.addEventListener('click', calibrate);
 
-// ===== 주기적 감쇠 =====
-setInterval(() => {
-  for (let i = 0; i < points.length; i++) points[i].weight *= DECAY;
-}, 100);
-
-// ===== 시작 =====
-render();
-setStatus('idle');
+// === 안전장치: 창 크기 바뀔 때도 viewport 좌표 그대로 사용 ===
+addEventListener('resize', () => {
+  // DOM 고정 포지셔닝이므로 별도 보정 불필요 — 점은 계속 viewport 좌표와 동기화됨
+});
