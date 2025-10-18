@@ -3,25 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Green Dot</title>
+  <title>Gaze Heatmap</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="ui">
-    <div class="row title">Eye Tracker (Gaze only)</div>
+    <div class="row title">Gaze Heatmap</div>
     <div class="row">
       <button id="startBtn">Start</button>
       <button id="stopBtn" disabled>Stop</button>
       <button id="calibrateBtn">Calibrate</button>
-    </div>
-    <div class="row">
       <label class="chk"><input id="showCam" type="checkbox" /> Show camera feed</label>
       <span id="status" class="badge">idle</span>
     </div>
-    <div id="hint" class="hint">HTTPS(또는 http://localhost)에서 열고 카메라를 허용하세요. 마우스 입력은 사용하지 않습니다.</div>
+    <div id="hint" class="hint">
+      HTTPS(또는 http://localhost)에서 열고 카메라 권한을 허용하세요. 마우스 입력은 사용하지 않습니다.
+    </div>
   </div>
 
-  <!-- 시선 점(초록) -->
+  <!-- 컬러 히트맵 표시용 -->
+  <canvas id="heat"></canvas>
+  <!-- 현재 시선을 보여주는 초록 점(옵션) -->
   <div id="dot"></div>
 
   <!-- 반드시 webgazer를 먼저 로드 -->
