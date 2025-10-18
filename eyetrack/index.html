@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gaze Heatmap</title>
+  <title>Eye Tracker – Single Dot (Gaze Only)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="ui">
-    <div class="row title">Gaze Heatmap</div>
+    <div class="row title">Eye Tracker (Gaze-only, Single Dot)</div>
     <div class="row">
       <button id="startBtn">Start</button>
       <button id="stopBtn" disabled>Stop</button>
@@ -17,16 +17,14 @@
       <span id="status" class="badge">idle</span>
     </div>
     <div id="hint" class="hint">
-      HTTPS(또는 http://localhost)에서 열고 카메라 권한을 허용하세요. 마우스 입력은 사용하지 않습니다.
+      HTTPS(또는 http://localhost)에서 열고 카메라를 허용하세요. 마우스 입력은 사용하지 않습니다.
     </div>
   </div>
 
-  <!-- 컬러 히트맵 표시용 -->
-  <canvas id="heat"></canvas>
-  <!-- 현재 시선을 보여주는 초록 점(옵션) -->
+  <!-- 시선 점(하나) -->
   <div id="dot"></div>
 
-  <!-- 반드시 webgazer를 먼저 로드 -->
+  <!-- webgazer를 먼저 로드 -->
   <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
   <script src="script.js"></script>
 </body>
