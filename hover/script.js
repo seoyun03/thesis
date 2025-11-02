@@ -1,15 +1,16 @@
-// ===== 기본 설정 =====
+// =====================
+// (1) HEATMAP (네 기존 로직 유지)
+// =====================
 const canvas = document.getElementById('heat');
 const ctx = canvas.getContext('2d', { alpha: false });
 const DPR = Math.max(1, Math.floor(window.devicePixelRatio || 1));
 
 let cell, cols, rows, heat;
 resize();
-window.addEventListener('resize', resize);
+window.addEventListener('resize', ()=>{ resize(); layoutWords(); });
 
 let mx = -99999, my = -99999, lmx = -99999, lmy = -99999;
 let lastMove = performance.now();
-
 let dwellStart = performance.now();
 let anchorX = -99999, anchorY = -99999;
 
@@ -45,9 +46,9 @@ function stampHeat(x, y, amount = 0.06, radius = 4) {
   }
 }
 
-// ===== 색상 그라데이션 =====
+// 색상 그라데이션
 const stops = [
-  { t: 0.00, c: [  0, 120, 255] },
+  { t: 0.00, c: [  0, 0, 0] },
   { t: 0.25, c: [  0, 255,   0] },
   { t: 0.50, c: [255, 255,   0] },
   { t: 1.00, c: [255,   0,   0] },
@@ -91,16 +92,14 @@ const octx = off.getContext('2d');
   }
   const dwellSec = Math.max(0, (now - dwellStart) / 1000);
 
-  // ===== 원 크기 강화 버전 =====
   const rMin = 3;
-  const rMaxBase = 60;        // 최대 반경 크게 (기존 28 → 60)
-  const timeToMax = 3.5;      // 약 3.5초 머무르면 최대
+  const rMaxBase = 60;
+  const timeToMax = 3.5;
   const gamma = 1.2;
   let t = Math.min(1, dwellSec / timeToMax);
   t = Math.pow(t, gamma);
   let radius = Math.floor(rMin + (rMaxBase - rMin) * t);
 
-  // 누적 열에 따라 반경 보너스 (최대 1.4배)
   if (anchorX > 0 && anchorY > 0) {
     const cx = Math.floor(anchorX / cell), cy = Math.floor(anchorY / cell);
     if (cx >= 0 && cy >= 0 && cx < cols && cy < rows) {
@@ -121,13 +120,13 @@ const octx = off.getContext('2d');
 
   lmx = mx; lmy = my;
 
-  // ===== 잔상 오래 유지 =====
+  // 냉각
   const COOL = 0.0015;
   for (let k = 0; k < heat.length; k++) {
     heat[k] = Math.max(0, heat[k] - COOL);
   }
 
-  // ===== 렌더링 =====
+  // 렌더링
   off.width = cols; off.height = rows;
   const img = octx.createImageData(cols, rows);
   let p = 0;
@@ -147,4 +146,180 @@ const octx = off.getContext('2d');
   ctx.filter = 'blur(6px)';
   ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
   ctx.filter = 'none';
+
+  // 자동 트리거 (아이들 상태)
+  autoDistortTick(now);
 })();
+
+// =====================
+// (2) 화면 왜곡 강도 제어
+// =====================
+const svgDisplace = document.querySelector('#distortFilter feDisplacementMap');
+function setDistortEase(ease){
+  document.documentElement.style.setProperty('--distort', ease.toFixed(3));
+  svgDisplace.setAttribute('scale', String(200 * ease));
+}
+function distortPulse(strength=1, ms=1000){
+  const start = performance.now();
+  function frame(t){
+    const k = Math.min(1, (t - start)/ms);
+    const e = Math.sin(k*Math.PI) * strength;
+    setDistortEase(e);
+    if (k<1) requestAnimationFrame(frame);
+    else setDistortEase(0);
+  }
+  requestAnimationFrame(frame);
+}
+
+// =====================
+// (3) 떠 있는 텍스트 생성/이펙트
+// =====================
+const floating = document.getElementById('floating');
+
+// 원하는 문장들 (추가/변경 자유)
+const WORDS = [
+  "the screen bends",
+  "your eyes glitch",
+  "light lingers",
+  "a trace remains",
+  "blur between",
+  "you blink, but it stays",
+  "afterimage mode",
+  "your space distorts",
+  "stars in the dark",
+  "focus flickers",
+  "lost in light"
+];
+
+const COUNT = 8; // 한번에 띄울 텍스트 개수
+const nodes = [];
+
+function layoutWords(){
+  const w = innerWidth;
+  const h = innerHeight;
+  const margin = 64;
+
+  nodes.forEach(n => n.el.remove());
+  nodes.length = 0;
+
+  // 무작위로 배치하되 겹침을 줄이기 위한 간단한 시도
+  const spots = [];
+  for (let i=0; i<COUNT; i++){
+    let tries = 20, x=0, y=0;
+    do{
+      x = margin + Math.random()*(w - margin*2);
+      y = margin + Math.random()*(h - margin*2);
+      tries--;
+    }while(tries>0 && spots.some(s => Math.hypot(s.x-x, s.y-y) < 140));
+    spots.push({x,y});
+  }
+
+  for (let i=0; i<COUNT; i++){
+    const text = WORDS[i % WORDS.length];
+    const el = document.createElement('span');
+    el.className = 'word ' + (i%3===0 ? 'l' : i%3===1 ? 'm' : 's');
+    el.style.left = `${spots[i].x}px`;
+    el.style.top  = `${spots[i].y}px`;
+    el.textContent = text;
+    el.dataset.txt = text; // ::before/::after
+    floating.appendChild(el);
+    nodes.push({el, x:spots[i].x, y:spots[i].y, state:'idle'});
+  }
+}
+layoutWords();
+
+// 랜덤으로 일부에 glitch 부여
+function glitchSome(count=3, dur=900){
+  const pick = shuffle(nodes).slice(0, count);
+  pick.forEach(n=>{
+    if (n.state==='drop') return;
+    n.el.classList.add('glitch');
+    setTimeout(()=> n.el.classList.remove('glitch'), dur);
+  });
+}
+
+// 랜덤으로 일부를 깜빡이게
+function blinkSome(count = 3, dur = 3000){
+  const pick = shuffle(nodes.filter(n => n.state !== 'drop')).slice(0, count);
+  pick.forEach(n => {
+    n.el.style.setProperty('--blink-delay', `${(Math.random()*1.1).toFixed(2)}s`);
+    n.el.classList.add('blink');
+    setTimeout(() => {
+      n.el.classList.remove('blink');
+      n.el.style.removeProperty('--blink-delay');
+    }, dur);
+  });
+}
+
+// 랜덤으로 일부 떨어뜨리기
+function dropSome(count=2){
+  const pick = shuffle(nodes.filter(n=>n.state!=='drop')).slice(0, count);
+  pick.forEach(n=>{
+    n.state='drop';
+    n.el.classList.remove('blink');   // 드롭 중 깜빡임 제거
+    n.el.classList.add('drop');
+    // 떨어진 후 재생성(다른 위치에 다시 등장)
+    setTimeout(()=>{
+      n.el.classList.remove('drop','glitch','blink');
+      n.state='idle';
+      // 새 위치
+      const w = innerWidth, h = innerHeight, m = 64;
+      n.x = m + Math.random()*(w - m*2);
+      n.y = m + Math.random()*(h - m*2);
+      n.el.style.left = `${n.x}px`;
+      n.el.style.top  = `${n.y}px`;
+      // 살짝 글리치로 복귀 강조
+      n.el.classList.add('glitch');
+      setTimeout(()=> n.el.classList.remove('glitch'), 600);
+    }, 700); // dropOut 0.7s와 동기화
+  });
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = (Math.random()*(i+1))|0;
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+// 입력 이벤트에 반응
+window.addEventListener('mousemove', throttle(()=>{
+  glitchSome(3, 900);
+  blinkSome(1, 1800);
+  distortPulse(.6, 800);
+}, 1400));
+
+window.addEventListener('click', ()=>{
+  glitchSome(5, 1200);
+  blinkSome(2, 2200);
+  dropSome(1);
+  distortPulse(1, 1000);
+});
+
+// 주기적으로도 약간씩 깜빡이게
+setInterval(() => blinkSome(2, 2600), 2200);
+
+// 아이들 상태면 자동으로 글리치/드롭/왜곡
+let lastAuto = 0;
+function autoDistortTick(now){
+  const IDLE_MS = 9000;
+  if (now - lastMove > IDLE_MS && now - lastAuto > IDLE_MS){
+    glitchSome(4, 1100);
+    dropSome(1);
+    distortPulse(.9, 1100);
+    lastAuto = now;
+  }
+}
+
+// 간단 스로틀
+function throttle(fn, wait){
+  let last = 0;
+  return function(...args){
+    const now = Date.now();
+    if (now - last > wait){
+      last = now;
+      fn.apply(this, args);
+    }
+  }
+}
