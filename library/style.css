@@ -1,0 +1,42 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #fff;
+  color: #000;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.title {
+  position: absolute;
+  top: clamp(16px, 3vw, 40px);
+  left: clamp(16px, 3vw, 40px);
+  font-size: clamp(80px, 18vw, 260px); /* ✅ 더 큼! */
+  font-weight: 300;
+  line-height: 0.88; /* 줄 간격도 약간 붙게 */
+  margin: 0;
+  letter-spacing: -0.025em;
+  text-align: left;
+}
+
+
+/* 왼쪽 아래 가로 텍스트 */
+.bottom-line {
+  position: absolute;
+  bottom: clamp(20px, 4vw, 50px);
+  left: clamp(20px, 4vw, 50px);
+  font-size: clamp(20px, 3vw, 42px); /* ✅ 적당히 큰 사이즈 */
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  margin: 0;
+  text-align: left;
+}
+
+.bottom-line a {
+  color: black;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.bottom-line a:hover {
+  opacity: 0.5; /* 호버 시 은은하게 */
+}

@@ -3,23 +3,29 @@ html, body {
   height: 100%;
   margin: 0;
   background: #0f0f12;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 300;
   color: #0b0b0b;
   overflow: hidden;
   /* ↓ 필요하면 커서를 숨겨 '마우스 느낌'을 완전히 제거 (전시/테스트용) */
   /* cursor: none; */
 }
 
-/* 상단 UI */
 #ui {
-  position: fixed; left: 12px; top: 12px; z-index: 20;
+  position: fixed;
+  bottom: 40px; /* 화면 하단 여백 */
+  left: 50%;    /* 가운데 정렬 */
+  transform: translateX(-50%); /* 중앙 기준 맞추기 */
+  z-index: 20;
   background: rgba(255,255,255,0.9);
   backdrop-filter: blur(6px);
   border-radius: 12px;
   padding: 10px 12px;
   box-shadow: 0 10px 30px rgba(20,30,60,0.15);
   width: min(520px, calc(100% - 24px));
+  text-align: center; /* 내부 콘텐츠도 가운데 정렬 */
 }
+
 .row { margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .title { font-weight: 700; font-size: 16px; margin-top: 0; }
 button { padding: 6px 12px; border-radius: 10px; border: 1px solid #d7dcff; background: #fff; cursor: pointer; }
