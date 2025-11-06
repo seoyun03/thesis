@@ -3,22 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gaze Grid</title>
+  <title>Gaze Grid – Stable</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="grid"></div>
 
-  <!-- 상단 컨트롤/상태 -->
+  <!-- HUD -->
   <div id="hud">
-    <button id="startBtn">시작(카메라 허용)</button>
-    <span id="status">대기 중</span>
+    <button id="startBtn">Start(Allow Camera)</button>
+    <button id="calBtn" disabled>Calibration</button>
+    <span id="status">Begin Tracking</span>
+    <span id="signal" title="Signal Status"></span>
+    <span id="coord"></span>
   </div>
 
-  <!-- 디버그: 예측 위치 표시 (빨간 점) -->
+  <!-- 스무딩된 시선 위치(빨간 점) -->
   <div id="dot"></div>
 
-  <!-- WebGazer -->
+  <!-- 캘리브레이션 -->
+  <div id="calOverlay" hidden>
+    <div id="calPrompt">Click the dots on the screen in order (for higher accuracy)</div>
+    <div id="calPoints"></div>
+    <button id="calDoneBtn">Complete/button>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/webgazer/dist/webgazer.min.js"></script>
   <script src="script.js"></script>
 </body>
