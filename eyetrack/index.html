@@ -2,27 +2,24 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Eye Tracker – Single Dot (Gaze Only)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gaze Grid</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="ui">
-    <div class="row title">Eye Tracker (Gaze-only, Single Dot)</div>
-    <div class="row">
-      <button id="startBtn">Start</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <button id="calibrateBtn">Calibrate</button>
-      <label class="chk"><input id="showCam" type="checkbox" /> Show camera feed</label>
-      <span id="status" class="badge">idle</span>
-    </div>
+  <div id="grid"></div>
+
+  <!-- 상단 컨트롤/상태 -->
+  <div id="hud">
+    <button id="startBtn">시작(카메라 허용)</button>
+    <span id="status">대기 중</span>
   </div>
 
-  <!-- 시선 점(하나) -->
+  <!-- 디버그: 예측 위치 표시 (빨간 점) -->
   <div id="dot"></div>
 
-  <!-- webgazer를 먼저 로드 -->
-  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <!-- WebGazer -->
+  <script src="https://cdn.jsdelivr.net/npm/webgazer/dist/webgazer.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

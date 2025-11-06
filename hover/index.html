@@ -2,31 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gaze Heatmap + Floating Glitch Text</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Responsive Blue Grid</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="stage" id="stage">
-    <!-- 왜곡/노이즈 레이어 (선택) -->
-    <div class="distort-overlay" aria-hidden="true"></div>
-    <div class="jitter" aria-hidden="true"></div>
-
-    <!-- 히트맵 -->
-    <canvas id="heat"></canvas>
-
-    <!-- 떠 있는 텍스트 컨테이너 -->
-    <div class="floating" id="floating" aria-hidden="true"></div>
-  </div>
-
-  <!-- SVG: 화면 왜곡 필터 -->
-  <svg width="0" height="0" style="position:absolute">
-    <filter id="distortFilter">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.028" numOctaves="2" seed="7" result="noise"/>
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </svg>
-
+  <div id="grid"></div>
   <script src="script.js"></script>
 </body>
 </html>
