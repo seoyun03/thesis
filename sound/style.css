@@ -1,0 +1,26 @@
+:root{
+  --block-size: 15px;
+  --gap: 2px;
+  --color: #5989dc;
+  --bg: #ffffff;
+}
+
+*{ box-sizing: border-box; }
+html, body{ height:100%; margin:0; background:var(--bg); }
+
+#grid{
+  display:grid;
+  width:100vw;
+  height:100vh;
+  padding:var(--gap);
+  gap:var(--gap);
+  grid-auto-rows: var(--block-size);
+}
+
+.block{
+  width: var(--block-size);
+  height: var(--block-size);
+  background: var(--color);
+  transition: none; /* 그라데이션 금지 */
+}
+
