@@ -1,8 +1,9 @@
 /* ===========================================
-   script.js — Beep Patterns by Color Level (Audio Unlock Fixed)
-   - Robust audio unlock on any user gesture (click/touch/move)
-   - Silent prime pulse to satisfy iOS/Safari
-   - Green: single beep / Yellow: small burst / Red: rapid beeps
+   script.js — Dwell = Louder + Faster
+   - Audio unlock hardened
+   - Green: single beep (interval shrinks with dwell)
+   - Yellow: burst (spacing & cycle shrink with dwell)
+   - Red: rapid beeps (tick spacing shrinks with dwell)
 =========================================== */
 
 // ---------- DOM ----------
@@ -14,7 +15,6 @@ const getVarPx = (name) =>
 
 // ---------- Audio (Web Audio API) ----------
 let AC = null, master = null, comp = null;
-let audioReady = false;
 let primed = false;
 
 function setupAudioNodes() {
@@ -37,7 +37,6 @@ function setupAudioNodes() {
 }
 
 function primeAudio() {
-  // iOS/Safari는 제스처 시점에 source start가 1회라도 있어야 함
   if (!AC || primed) return;
   const o = AC.createOscillator();
   const g = AC.createGain();
@@ -54,24 +53,37 @@ async function unlockAudio() {
     try { await AC.resume(); } catch (e) {}
   }
   primeAudio();
-  audioReady = (AC.state === 'running');
 }
 
 const now = () => (AC ? AC.currentTime : 0);
 
-// 전역적으로 모든 제스처에서 언락 시도 (once 아님: 매번 보강)
+// 모든 제스처에서 언락 시도
 ['pointerdown','pointerup','pointermove','click','keydown','touchstart','touchend','touchmove']
   .forEach(evt => window.addEventListener(evt, unlockAudio, { passive: true }));
-
-// 탭 비활성→재활성 시 재개
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') unlockAudio();
 });
 
-// ---------- Simple Beep Synthesis ----------
+// ---------- Dwell helpers ----------
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+// 0~T초에서 0→1로 선형 증가
+function dwellNorm(block, T = 6){
+  if (!AC || !block || !block._enterAt) return 0;
+  const age = Math.max(0, now() - block._enterAt);
+  return clamp01(age / T);
+}
+// 선형 보간
+function lerp(a,b,t){ return a + (b - a) * t; }
+
+// 볼륨: 0~6초 동안 base → max
+function dwellVol(block, base = 0.6, max = 1.0) {
+  const t = dwellNorm(block, 6);
+  return Math.min(max, lerp(base, max, t));
+}
+
+// ---------- Beep Synthesis ----------
 function playBeep({ freq = 880, dur = 0.12, vol = 0.7 } = {}) {
-  if (!AC) return;
-  if (AC.state !== 'running') return; // 잠겨 있으면 무음
+  if (!AC || AC.state !== 'running') return;
   const t = now();
 
   const o = AC.createOscillator();
@@ -93,80 +105,88 @@ function playBeep({ freq = 880, dur = 0.12, vol = 0.7 } = {}) {
   o.start(t); o.stop(t + dur);
 }
 
-// 레벨 상승 피드백
-function playLevelBlip(level = 0) {
+// 레벨 상승 피드백(진입 즉시 1회)
+function playLevelBlip(level = 0, vol = 0.65) {
   const base = [520, 880, 660, 980][Math.min(level, 3)];
-  playBeep({ freq: base, dur: 0.1, vol: 0.65 });
+  playBeep({ freq: base, dur: 0.1, vol });
 }
 
-// ---------- Repeater: level에 따라 패턴/주기 ----------
-/*
-  level 0: 반복 없음
-  level 1 (green): 1회 '삑' / 650ms
-  level 2 (yellow): 3회 '삑' 버스트 / 800ms
-  level 3 (red): 거의 연속 '삑' / 70~120ms 간격
-*/
-const cycleMsByLevel = [null, 650, 800, 120];
-
+// ---------- Adaptive Repeaters ----------
 function startRepeater(block) {
   stopRepeater(block);
 
-  let level = parseInt(block.dataset.level || '0', 10);
-  const schedule = () => {
-    level = parseInt(block.dataset.level || '0', 10);
-    stopRepeater(block);
-    if (!block._hovering || level === 0) return;
+  const scheduleGreen = () => {
+    if (!block._hovering) return;
+    const vol = dwellVol(block, 0.55, 0.95);
+    playBeep({ freq: 880, dur: 0.11, vol });
 
-    if (level === 1) {
-      // 초록: 한 번 '삑'
-      block._rep = setInterval(() => {
-        if (!block._hovering) return;
-        unlockAudio(); // 혹시 또 잠기면 즉시 재개
-        playBeep({ freq: 880, dur: 0.11, vol: 0.65 });
-      }, cycleMsByLevel[1]);
-    } else if (level === 2) {
-      // 노랑: 3회 버스트
-      block._rep = setInterval(() => {
-        if (!block._hovering) return;
-        unlockAudio();
-        const burstCount = 3;
-        for (let i = 0; i < burstCount; i++) {
-          const offset = i * 110;
-          setTimeout(() => {
-            if (!block._hovering) return;
-            const f = 740 + Math.random() * 140; // 미세 변조
-            playBeep({ freq: f, dur: 0.095, vol: 0.62 });
-          }, offset);
-        }
-      }, cycleMsByLevel[2]);
-    } else {
-      // 빨강: 빠른 반복 '삑'
-      const tick = () => {
-        if (!block._hovering) return;
-        unlockAudio();
-        const f = 900 + Math.random() * 240;
-        const d = 0.07 + Math.random() * 0.03;
-        const v = 0.62 + Math.random() * 0.1;
-        playBeep({ freq: f, dur: d, vol: v });
+    // 700 → 220ms로 점점 빨라짐
+    const t = dwellNorm(block, 6);
+    const interval = lerp(700, 220, t);
 
-        block._rep = setTimeout(tick, 70 + Math.random() * 50);
-      };
-      block._rep = setTimeout(tick, 0);
-      block._rep_isTimeout = true;
-    }
+    block._rep = setTimeout(scheduleGreen, interval);
+    block._rep_isTimeout = true;
   };
 
-  schedule();
-  block._onLevelBumped = () => schedule();
+  const scheduleYellow = () => {
+    if (!block._hovering) return;
+    const t = dwellNorm(block, 6);
+
+    // 버스트 간 간격 110 → 60ms
+    const gap = lerp(110, 60, t);
+    // 사이클 길이 900 → 260ms
+    const cycle = lerp(900, 260, t);
+
+    const burstCount = 3;
+    for (let i = 0; i < burstCount; i++) {
+      const offset = i * gap;
+      setTimeout(() => {
+        if (!block._hovering) return;
+        const f = 740 + Math.random() * 140;
+        const vol = dwellVol(block, 0.6, 0.98);
+        playBeep({ freq: f, dur: 0.095, vol });
+      }, offset);
+    }
+    block._rep = setTimeout(scheduleYellow, cycle);
+    block._rep_isTimeout = true;
+  };
+
+  const scheduleRed = () => {
+    if (!block._hovering) return;
+
+    // 120 → 45ms로 점점 빨라짐
+    const t = dwellNorm(block, 6);
+    const spacing = lerp(120, 45, t);
+
+    const f = 900 + Math.random() * 240;
+    const d = 0.07 + Math.random() * 0.03;
+    const vol = dwellVol(block, 0.62, 1.0);
+    playBeep({ freq: f, dur: d, vol });
+
+    block._rep = setTimeout(scheduleRed, spacing);
+    block._rep_isTimeout = true;
+  };
+
+  // 현재 레벨에 따라 해당 스케줄러 시작
+  const runForLevel = () => {
+    stopRepeater(block);
+    const level = parseInt(block.dataset.level || '0', 10);
+    if (!block._hovering || level === 0) return;
+
+    if (level === 1) scheduleGreen();
+    else if (level === 2) scheduleYellow();
+    else scheduleRed();
+  };
+
+  // 시작 + 레벨 바뀔 때 재설정
+  runForLevel();
+  block._onLevelBumped = () => runForLevel();
 }
 
 function stopRepeater(block) {
   if (!block) return;
-  if (block._rep_isTimeout) {
-    clearTimeout(block._rep);
-  } else if (block._rep) {
-    clearInterval(block._rep);
-  }
+  if (block._rep_isTimeout) clearTimeout(block._rep);
+  else if (block._rep) clearInterval(block._rep);
   block._rep = null;
   block._rep_isTimeout = false;
 }
@@ -207,18 +227,20 @@ function layout(){
 
 // ---------- Interaction ----------
 async function onEnter(e){
-  await unlockAudio(); // hover만으로도 오디오 활성화
+  await unlockAudio();
   const block = e.currentTarget;
   block._hovering = true;
+  block._enterAt = now(); // 체류 시작 기록
 
-  stepColor(block, true);   // 색 올리면서 레벨 블립
-  startRepeater(block);     // 레벨 패턴 시작
+  stepColor(block, true);
+  startRepeater(block);
 }
 
 function onLeave(e){
   const block = e.currentTarget;
   block._hovering = false;
   stopRepeater(block);
+  block._enterAt = null;
 }
 
 // 색 단계 상승: 0→1→2→3 (100ms 간격)
@@ -233,7 +255,10 @@ function stepColor(block, fromEnter = false){
   function applyNext(){
     if (!block._hovering) { cleanup(); return; }
     if (level >= 3) {
-      if (fromEnter) playLevelBlip(level);
+      if (fromEnter) {
+        const vol = dwellVol(block, 0.6, 0.95);
+        playLevelBlip(level, vol);
+      }
       cleanup();
       return;
     }
@@ -242,7 +267,9 @@ function stepColor(block, fromEnter = false){
     block.style.backgroundColor = seq[level];
     block.dataset.level = String(level);
 
-    playLevelBlip(level);
+    const vol = dwellVol(block, 0.6, 0.95);
+    playLevelBlip(level, vol);
+
     if (typeof block._onLevelBumped === 'function') block._onLevelBumped();
 
     if (level < 3) {
@@ -257,7 +284,10 @@ function stepColor(block, fromEnter = false){
     if (block._timer) { clearTimeout(block._timer); block._timer = null; }
   }
 
-  if (fromEnter && level >= 3) playLevelBlip(level);
+  if (fromEnter && level >= 3) {
+    const vol = dwellVol(block, 0.6, 0.95);
+    playLevelBlip(level, vol);
+  }
   applyNext();
 }
 
@@ -268,5 +298,5 @@ addEventListener('resize', () => {
   layout._t = setTimeout(layout, 80);
 });
 
-// 페이지 로드 직후에도 언락 시도(바로는 막혀도, 첫 제스처 때 보강)
+// 초기 언락 시도
 unlockAudio();
